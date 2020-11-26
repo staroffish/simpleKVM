@@ -4,24 +4,23 @@ import (
 	"context"
 	"fmt"
 	"syscall"
-	"unsafe"
 
 	"github.com/staroffish/simpleKVM/capture/v4l2"
 )
 
-type ImageBuffer struct {
-	length  uint32
-	pointer unsafe.Pointer
-	data    []byte
+type frameBuffer struct {
+	bytesUsed uint32
+	data      []byte
 }
 
 type CaptureDevice struct {
 	fd            uintptr
 	capability    *v4l2.V4l2Capability
-	buffer        []ImageBuffer
+	queueBuffer   [][]byte
 	streamingType uint32
 	cancel        context.CancelFunc
-	frameCh       chan []byte
+	fBuffer       [256]*frameBuffer
+	bufferIndexCh chan int
 }
 
 var frameFormatNameToCode = map[string]uint32{
@@ -36,13 +35,23 @@ func GetFrameFormatCodeByString(name string) (uint32, error) {
 	return 0, fmt.Errorf("%s not supported", name)
 }
 
-func NewV4l2Device(fileDescription uintptr) *CaptureDevice {
-	return &CaptureDevice{
+func NewV4l2Device(fileDescription uintptr, imageDataFormat, frameRate, width, height, bufferCount uint32) (*CaptureDevice, error) {
+	c := &CaptureDevice{
 		fd: fileDescription,
 	}
+	return c, c.init(imageDataFormat, frameRate, width, height, bufferCount)
 }
 
-func (c *CaptureDevice) Init(imageDataFormat, frameRate, Width, Height, bufferCount uint32) (err error) {
+func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCount uint32) (err error) {
+
+	c.bufferIndexCh = make(chan int)
+	c.frameCh = make(chan *frameBuffer)
+
+	for n, _ := range c.fBuffer {
+		c.fBuffer[n] = &frameBuffer{}
+		c.fBuffer[n].data = make([]byte, 1024*1024*2)
+	}
+
 	capability, err := v4l2.QueryCapability(c.fd)
 	if err != nil {
 		return fmt.Errorf("QueryCapability error: %v", err)
@@ -80,8 +89,8 @@ func (c *CaptureDevice) Init(imageDataFormat, frameRate, Width, Height, bufferCo
 	format := &v4l2.V4l2Format{
 		Type: c.streamingType,
 		Pix: &v4l2.V4l2PixFormat{
-			Width:       Width,
-			Height:      Height,
+			Width:       width,
+			Height:      height,
 			Field:       v4l2.V4L2_FIELD_ANY,
 			Pixelformat: formatDesc.Pixelformat,
 		},
@@ -113,7 +122,7 @@ func (c *CaptureDevice) Init(imageDataFormat, frameRate, Width, Height, bufferCo
 	if err := v4l2.RequestBuffer(c.fd, reqBuff); err != nil {
 		return err
 	}
-	c.buffer = make([]ImageBuffer, bufferCount)
+	c.queueBuffer = make([][]byte, bufferCount)
 
 	for index := uint32(0); index < reqBuff.Count; index++ {
 		v4l2Buffer, err := v4l2.QueryBuffer(c.fd, c.streamingType, index)
@@ -121,13 +130,13 @@ func (c *CaptureDevice) Init(imageDataFormat, frameRate, Width, Height, bufferCo
 			return err
 		}
 
-		c.buffer[index].data, err = syscall.Mmap(int(c.fd), int64(v4l2Buffer.Offset), int(v4l2Buffer.Length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+		c.queueBuffer[index], err = syscall.Mmap(int(c.fd), int64(v4l2Buffer.Offset), int(v4l2Buffer.Length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 		if err != nil {
 			return fmt.Errorf("mmap error: %v", err)
 		}
 		defer func(index uint32) {
 			if err != nil {
-				unMaperr := syscall.Munmap(c.buffer[index].data)
+				unMaperr := syscall.Munmap(c.queueBuffer[index])
 				if unMaperr != nil {
 					err = fmt.Errorf("%v|munmap error: %v", err, unMaperr)
 				}
@@ -150,7 +159,6 @@ func (c *CaptureDevice) StartStreaming() (err error) {
 	if err := v4l2.StreamOn(c.fd, c.streamingType); err != nil {
 		return err
 	}
-	c.frameCh = make(chan []byte)
 
 	go func(ctx context.Context) {
 		defer func() {
@@ -158,25 +166,49 @@ func (c *CaptureDevice) StartStreaming() (err error) {
 				fmt.Printf("%v\n", err)
 			}
 		}()
+
+		indexCh := make(chan int)
+		go func() {
+			bufferIndex := 0
+
+			// wait for loop executed
+			bufferIndex = <-indexCh
+
+			for {
+				select {
+				case bufferIndex = <-indexCh:
+				default:
+				}
+				select {
+				case c.bufferIndexCh <- bufferIndex:
+				default:
+				}
+			}
+		}()
+
+		index := 0
 		for {
 			buffer, err := v4l2.DeQueueBuffer(c.fd, c.streamingType)
 			if err != nil {
 				fmt.Printf("%v\n", err)
-				return
 			}
-
-			data := make([]byte, buffer.BytesUsed)
-			copy(data, c.buffer[buffer.Index].data[:buffer.BytesUsed])
+			c.fBuffer[index].bytesUsed = buffer.BytesUsed
+			copy(c.fBuffer[index].data, c.queueBuffer[buffer.Index][:buffer.BytesUsed])
 
 			if err = v4l2.QueueBuffer(c.fd, c.streamingType, buffer.Index); err != nil {
 				fmt.Printf("%v\n", err)
 				return
 			}
 			select {
-			case c.frameCh <- data:
+			case c.bufferIndexCh <- index:
 			case <-ctx.Done():
 				return
 			default:
+			}
+
+			index++
+			if index >= len(c.fBuffer) {
+				index = 0
 			}
 		}
 	}(ctx)
@@ -188,8 +220,8 @@ func (c *CaptureDevice) StopStreaming() error {
 	c.cancel()
 	var errMsg string
 
-	for index, buffer := range c.buffer {
-		err := syscall.Munmap(buffer.data)
+	for index, frame := range c.queueBuffer {
+		err := syscall.Munmap(frame)
 		if err != nil {
 			errMsg = fmt.Sprintf("%smunmap error. index=%d, error=%v\n", errMsg, index, err)
 		}
@@ -202,5 +234,6 @@ func (c *CaptureDevice) StopStreaming() error {
 }
 
 func (c *CaptureDevice) GetFrame() []byte {
-	return <-c.frameCh
+	index := <-c.bufferIndexCh
+	return c.fBuffer[index].data[:c.fBuffer[index].bytesUsed]
 }

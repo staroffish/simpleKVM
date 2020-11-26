@@ -22,9 +22,7 @@ func TestCapture(t *testing.T) {
 
 	fd := file.Fd()
 
-	dev := NewV4l2Device(fd)
-
-	err = dev.Init(v4l2.V4L2_PIX_FMT_MJPEG, 1920, 1080, 3)
+	dev, err := NewV4l2Device(fd, v4l2.V4L2_PIX_FMT_MJPEG, 24, 1920, 1080, 3)
 	if err != nil {
 		t.Fatalf("Init return error: %v", err)
 	}
