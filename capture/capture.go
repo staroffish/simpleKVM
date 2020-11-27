@@ -45,7 +45,6 @@ func NewV4l2Device(fileDescription uintptr, imageDataFormat, frameRate, width, h
 func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCount uint32) (err error) {
 
 	c.bufferIndexCh = make(chan int)
-	c.frameCh = make(chan *frameBuffer)
 
 	for n, _ := range c.fBuffer {
 		c.fBuffer[n] = &frameBuffer{}

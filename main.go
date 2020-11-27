@@ -10,11 +10,13 @@ import (
 )
 
 var (
-	device      string
-	frameFormat string
-	frameRate   int
-	height      int
-	width       int
+	captureDevice string
+	frameFormat   string
+	frameRate     int
+	height        int
+	width         int
+	hidDevice     string
+	hidModel      string
 )
 
 func main() {
@@ -23,7 +25,9 @@ func main() {
 		Short: "a simple kvm via http",
 		Run:   run,
 	}
-	rootCmd.PersistentFlags().StringVarP(&device, "device", "d", "/dev/video0", "The path of capture device")
+	rootCmd.PersistentFlags().StringVarP(&captureDevice, "capture", "", "/dev/video0", "The path of capture device")
+	rootCmd.PersistentFlags().StringVarP(&hidDevice, "hid", "", "/dev/ttyUSB0", "The path of hid device")
+	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model")
 	rootCmd.PersistentFlags().StringVarP(&frameFormat, "format", "f", "mjpeg", "The frame format. supported: mjpeg")
 	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 24, "The frame rate")
 	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1920, "height")
@@ -39,10 +43,10 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Printf("%v", err)
 	}
 
-	file, err := os.OpenFile(device, os.O_RDWR, 0)
+	file, err := os.OpenFile(captureDevice, os.O_RDWR, 0)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			fmt.Printf("open %s error: %v", device, err)
+			fmt.Printf("open %s error: %v", captureDevice, err)
 		}
 		return
 	}
