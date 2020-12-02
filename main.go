@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/staroffish/simpleKVM/capture"
+	"github.com/staroffish/simpleKVM/hid"
 )
 
 var (
@@ -27,7 +28,7 @@ func main() {
 	}
 	rootCmd.PersistentFlags().StringVarP(&captureDevice, "capture", "", "/dev/video0", "The path of capture device")
 	rootCmd.PersistentFlags().StringVarP(&hidDevice, "hid", "", "/dev/ttyUSB0", "The path of hid device")
-	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model")
+	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model. supported: ch9329")
 	rootCmd.PersistentFlags().StringVarP(&frameFormat, "format", "f", "mjpeg", "The frame format. supported: mjpeg")
 	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 24, "The frame rate")
 	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1920, "height")
@@ -65,5 +66,17 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Printf("start streaming error:%v", err)
 		return
 	}
-	StartHttpServer(context.Background(), "0.0.0.0:8181", dev)
+
+	hidDev, err := hid.GetHidDevice(hidModel)
+	if err != nil {
+		fmt.Printf("get hid device error:%v", err)
+		return
+	}
+
+	if err := hidDev.OpenDevice(hidDevice); err != nil {
+		fmt.Printf("open hid device error:%v", err)
+		return
+	}
+
+	StartHttpServer(context.Background(), "0.0.0.0:8181", dev, hidDev)
 }

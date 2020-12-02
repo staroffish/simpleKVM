@@ -7,10 +7,6 @@ import (
 	"github.com/staroffish/simpleKVM/capture"
 )
 
-const (
-	HTTP_STREAMER = iota
-)
-
 type Streamer interface {
 	Streaming(io.Writer) error
 }

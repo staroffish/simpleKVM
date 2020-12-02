@@ -1,27 +1,8 @@
 <html>
+<script type="text/javascript" src="keyevent.js"></script>
 
-<body>
+<body onkeydown="return keyDown(event)" onkeyup="return keyUp(event)">
     <img id="id1" src="/mjpeg" />
-    <!-- <script language="JavaScript">
-        // var ctx = document.getElementById('id1');
-        // window.setInterval(refreshCanvas, 5000);
-        // window.requestAnimationFrame(refreshCanvas);
-        // ctx.Onload(refreshCanvas)
-        // function refreshCanvas() {
-        // var img = new Image();
-        // img.src = "/video?image=" + new Date().getTime();
-        // // img.src = "/video";
-        // ctx.drawImage(img, 0, 0);
-        // window.requestAnimationFrame(refreshCanvas);
-        // ctx.src = "/video";
-        // };
-        // refreshCanvas()
-        var img = document.getElementById('id1');
-        var source = new EventSource('/mjpeg');
-        source.addEventListener('image', function (e) {
-            img.src = 'data:image/jpg;base64,' + e.data;
-        });
-    </script> -->
 </body>
 
 </html>
