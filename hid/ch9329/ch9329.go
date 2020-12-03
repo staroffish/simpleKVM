@@ -12,6 +12,7 @@ const (
 	ALTTRLSHIFTOSKEYINDEX = 5
 	RESPONSESTATUSINDEX   = 5
 	SUMINDEX              = 13
+	KEYEVENTTIMEOUT       = time.Millisecond * 200
 )
 
 type ch9329 struct {
@@ -190,8 +191,8 @@ func (c *ch9329) keyDownKeyUp() {
 		case <-time.Tick(100 * time.Millisecond):
 			now := time.Now()
 			for key, keyDownTime := range keyDownTimeoutMap {
-				fmt.Printf("now sub keydown time %v, key=%v \n", now.Sub(keyDownTime), key)
-				if now.Sub(keyDownTime) > time.Second {
+				fmt.Printf("now sub keydown time %v, key=%v command=%v \n", now.Sub(keyDownTime), key, command)
+				if now.Sub(keyDownTime) > KEYEVENTTIMEOUT {
 					fmt.Printf("key time out %v:%v\n", keyDownTime, key)
 					go func() {
 						upEvent := &ch9329KeyEvent{

@@ -13,7 +13,9 @@ import (
 )
 
 func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevice, hid common.Hid) {
-	httpServer := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	httpServer := gin.New()
+	// gin.Default().Use()
 
 	httpServer.GET("/mjpeg", func(ctx *gin.Context) {
 		boundary := "frame"
@@ -23,7 +25,7 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 		mjpegStreamer.Streaming(ctx.Writer)
 	})
 	httpServer.POST("/keydown", func(ctx *gin.Context) {
-		keyCodeStr, exists := ctx.GetPostForm("key_code")
+		keyCodeStr, exists := ctx.GetQuery("key_code")
 		if !exists {
 			ctx.Data(http.StatusBadRequest, "text/text", []byte("key code dose not exists"))
 			return
@@ -41,7 +43,7 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
 	})
 	httpServer.POST("/keyup", func(ctx *gin.Context) {
-		keyCodeStr, exists := ctx.GetPostForm("key_code")
+		keyCodeStr, exists := ctx.GetQuery("key_code")
 		if !exists {
 			ctx.Data(http.StatusBadRequest, "text/text", []byte("key code dose not exists"))
 			return

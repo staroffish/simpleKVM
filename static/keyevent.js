@@ -1,4 +1,3 @@
-var xmlhttp = CreateXMLHttpRequest();
 var xmlCtrlKeyhttp = CreateXMLHttpRequest();
 var isFirefox = isFirefoxBrowser();
 
@@ -22,40 +21,33 @@ function keyDown(e) {
         keynum = e.which
     }
 
-    console.log("e.shiftKey =" + e.shiftKey + " e.Key=" + e.key);
     if (e.ctrlKey === true && e.key != 'Control') {
 
         xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown", true);
-        xmlCtrlKeyhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        xmlCtrlKeyhttp.send("key_code=" + 17);
+        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 17, true);
+        xmlCtrlKeyhttp.send();
     }
     else if (e.shiftKey === true && e.key != 'Shift') {
-        console.log("shift is enter");
         xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown", true);
-        xmlCtrlKeyhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        xmlCtrlKeyhttp.send("key_code=" + 16);
+        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 16, true);
+        xmlCtrlKeyhttp.send();
     }
     else if (e.altKey === true && e.key != 'Alt') {
         xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown", true);
-        xmlCtrlKeyhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        xmlCtrlKeyhttp.send("key_code=" + 18);
+        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 18, true);
+        xmlCtrlKeyhttp.send();
     }
     else if (e.metaKey === true && e.key != 'OS' && e.key != 'Meta') {
         xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown", true);
-        xmlCtrlKeyhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        xmlCtrlKeyhttp.send("key_code=" + 91);
+        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 91, true);
+        xmlCtrlKeyhttp.send();
     }
 
-
+    var xmlDownHttp = CreateXMLHttpRequest();
     keynum = convertKeyCodeToFirefoxStandard(keynum)
-    xmlhttp.onreadystatechange = callhandle;
-    xmlhttp.open("POST", "/keydown", true);
-    xmlhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    xmlhttp.send("key_code=" + keynum);
+    xmlDownHttp.onreadystatechange = callhandle;
+    xmlDownHttp.open("POST", "/keydown?key_code=" + keynum, true);
+    xmlDownHttp.send();
     return false;
 }
 
@@ -68,12 +60,11 @@ function keyUp(e) {
     {
         keynum = e.which
     }
-
+    var xmlUpHttp = CreateXMLHttpRequest();
     keynum = convertKeyCodeToFirefoxStandard(keynum)
-    xmlhttp.onreadystatechange = callhandle;
-    xmlhttp.open("POST", "/keyup", true);
-    xmlhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    xmlhttp.send("key_code=" + keynum);
+    xmlUpHttp.onreadystatechange = callhandle;
+    xmlUpHttp.open("POST", "/keyup?key_code=" + keynum, true);
+    xmlUpHttp.send();
     return false;
 }
 
