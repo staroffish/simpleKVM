@@ -1,5 +1,11 @@
 package common
 
+const (
+	MouseLeftButton = iota
+	MouseRightButton
+	MouseMiddleButton
+)
+
 type Hid interface {
 	OpenDevice(args ...string) error
 	CloseDevice() error

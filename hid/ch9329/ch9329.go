@@ -11,16 +11,25 @@ import (
 const (
 	ALTTRLSHIFTOSKEYINDEX = 5
 	RESPONSESTATUSINDEX   = 5
-	SUMINDEX              = 13
 	KEYEVENTTIMEOUT       = time.Millisecond * 200
+	XMOUSEMOVEINDEXLOW    = 7
+	XMOUSEMOVEINDEXHIGH   = 8
+	YMOUSEMOVEINDEXLOW    = 9
+	YMOUSEMOVEINDEXHIGH   = 10
 )
 
 type ch9329 struct {
 	*common.BaseHid
-	device         *serial.Port
-	pressedKey     map[byte]byte
-	keyDownEventCh chan *ch9329KeyEvent
-	keyUpEventCh   chan *ch9329KeyEvent
+	device              *serial.Port
+	screenX             int
+	screenY             int
+	pressedKey          map[byte]byte
+	keyDownEventCh      chan *ch9329KeyEvent
+	keyUpEventCh        chan *ch9329KeyEvent
+	mouseMoveEventCh    chan *ch9329MouseEvent
+	mouseKeyDownEventCh chan *ch9329MouseEvent
+	mouseKeyUpEventCh   chan *ch9329MouseEvent
+	mouseScorllEventCh  chan *ch9329MouseEvent
 }
 
 type ch9329KeyEvent struct {
@@ -33,13 +42,30 @@ type ch9329Key struct {
 	isControlKey bool
 }
 
-func NewCh9329() *ch9329 {
+type ch9329MouseEvent struct {
+	resultCh chan error
+	*ch9329MouseMoveEvent
+}
+
+type ch9329MouseMoveEvent struct {
+	xPoint uint16
+	yPoint uint16
+	button int
+}
+
+func NewCh9329(x, y int) *ch9329 {
 	dev := &ch9329{
 		BaseHid: &common.BaseHid{},
+		screenX: x,
+		screenY: y,
 	}
 	dev.pressedKey = make(map[byte]byte)
 	dev.keyDownEventCh = make(chan *ch9329KeyEvent)
 	dev.keyUpEventCh = make(chan *ch9329KeyEvent)
+	dev.mouseMoveEventCh = make(chan *ch9329MouseEvent)
+	dev.mouseKeyDownEventCh = make(chan *ch9329MouseEvent)
+	dev.mouseKeyUpEventCh = make(chan *ch9329MouseEvent)
+	dev.mouseScorllEventCh = make(chan *ch9329MouseEvent)
 	return dev
 }
 
@@ -56,8 +82,10 @@ func (c *ch9329) OpenDevice(args ...string) error {
 	c.device = port
 	fmt.Printf("opened device\n")
 	go c.keyDownKeyUp()
+	go c.mouseOperator()
 	return nil
 }
+
 func (c *ch9329) CloseDevice() error {
 	c.device.Close()
 	return nil
@@ -120,8 +148,28 @@ func (c *ch9329) KeyUp(eventKeyCode byte) error {
 		ch9329Key: ch9329Key{keyCode: devkeyCode, isControlKey: isControlKey},
 		resultCh:  make(chan error),
 	}
+
 	c.keyUpEventCh <- upEvent
 	err = <-upEvent.resultCh
+
+	return err
+}
+
+func (c *ch9329) MoveTo(x uint16, y uint16) error {
+	moveEvent := &ch9329MouseEvent{
+		resultCh: make(chan error),
+		ch9329MouseMoveEvent: &ch9329MouseMoveEvent{
+			xPoint: x,
+			yPoint: y,
+		},
+	}
+
+	var err error
+	select {
+	case c.mouseMoveEventCh <- moveEvent:
+		err = <-moveEvent.resultCh
+	default:
+	}
 
 	return err
 }
@@ -132,9 +180,8 @@ func (c *ch9329) keyDownKeyUp() {
 	keyDownTimeoutMap := map[ch9329Key]time.Time{}
 
 	command := []byte{0x57, 0xAB, 0x00, 0x02, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	var resultCh chan error
 	for {
-		var resultCh chan error
-		command[SUMINDEX] = 0
 		select {
 		case key := <-c.keyDownEventCh:
 			if key.isControlKey {
@@ -207,27 +254,62 @@ func (c *ch9329) keyDownKeyUp() {
 			continue
 		}
 
-		sum := byte(0)
-		for _, b := range command {
-			sum += b
-		}
-
-		fmt.Printf("sum = %v\n", sum)
-		command[SUMINDEX] = sum
-
-		fmt.Printf("commond=%v\n", command)
-		n, err := c.device.Write(command)
-		if err != nil {
-			resultCh <- fmt.Errorf("write file error:n=%d, err=%v", n, err)
-			continue
-		}
-
-		response := make([]byte, 100)
-		_, err = c.device.Read(response)
-		if err != nil || response[RESPONSESTATUSINDEX] != 0 {
-			resultCh <- fmt.Errorf("read file error: err=%v, status code = %x", err, response[RESPONSESTATUSINDEX])
-			continue
-		}
-		resultCh <- nil
+		resultCh <- c.readWriteDevice(command)
 	}
+}
+
+func (c *ch9329) mouseOperator() {
+	command := []byte{0x57, 0xAB, 0x00, 0x04, 0x07, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	var resultCh chan error
+
+	for {
+		select {
+		case event := <-c.mouseMoveEventCh:
+			resultCh = event.resultCh
+			xCur := c.getDevicePoint(event.xPoint, uint16(c.screenX))
+
+			command[XMOUSEMOVEINDEXLOW] = xCur[0]
+			command[XMOUSEMOVEINDEXHIGH] = xCur[1]
+			yCur := c.getDevicePoint(event.yPoint, uint16(c.screenY))
+			command[YMOUSEMOVEINDEXLOW] = yCur[0]
+			command[YMOUSEMOVEINDEXHIGH] = yCur[1]
+		}
+
+		resultCh <- c.readWriteDevice(command)
+	}
+}
+
+func (c *ch9329) readWriteDevice(command []byte) error {
+	sum := byte(0)
+	sumIndex := len(command) - 1
+	command[sumIndex] = 0
+	for _, b := range command {
+		sum += b
+	}
+
+	fmt.Printf("sum = %v\n", sum)
+	command[sumIndex] = sum
+
+	fmt.Printf("commond=%v\n", command)
+	n, err := c.device.Write(command)
+	if err != nil {
+		return fmt.Errorf("write file error:n=%d, err=%v", n, err)
+	}
+
+	response := make([]byte, 100)
+	_, err = c.device.Read(response)
+	if err != nil || response[RESPONSESTATUSINDEX] != 0 {
+		return fmt.Errorf("read file error: err=%v, status code = %x", err, response[RESPONSESTATUSINDEX])
+	}
+
+	return nil
+}
+
+func (c *ch9329) getDevicePoint(point, screenMax uint16) [2]byte {
+	devicePoint := [2]byte{}
+	curse := (uint32(point) * 4096) / uint32(screenMax)
+	devicePoint[0] = byte(uint16(curse) & 0x00FF)
+	devicePoint[1] = byte(uint16(curse) >> 8)
+	fmt.Printf("point=%d maxX%d curse=%d devicePoint=%v\n", point, screenMax, curse, devicePoint)
+	return devicePoint
 }

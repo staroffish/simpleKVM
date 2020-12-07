@@ -31,8 +31,8 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model. supported: ch9329")
 	rootCmd.PersistentFlags().StringVarP(&frameFormat, "format", "f", "mjpeg", "The frame format. supported: mjpeg")
 	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 24, "The frame rate")
-	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1920, "height")
-	rootCmd.PersistentFlags().IntVarP(&width, "width", "", 1080, "width")
+	rootCmd.PersistentFlags().IntVarP(&width, "width", "", 1920, "width")
+	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1080, "height")
 	rootCmd.Execute()
 
 }
@@ -66,6 +66,8 @@ func run(_ *cobra.Command, _ []string) {
 		fmt.Printf("start streaming error:%v", err)
 		return
 	}
+
+	hid.InitHid(width, height)
 
 	hidDev, err := hid.GetHidDevice(hidModel)
 	if err != nil {

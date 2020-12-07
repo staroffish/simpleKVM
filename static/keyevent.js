@@ -68,6 +68,13 @@ function keyUp(e) {
     return false;
 }
 
+function mouseMove(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/movemove?x=" + e.clientX + "&y=" + e.clientY, true);
+    xmlmouseHttp.send();
+}
+
 function callhandle() {
     // if (xmlhttp.status != 200) {
     //     console.log(xmlhttp.responseText);
