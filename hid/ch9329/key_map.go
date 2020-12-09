@@ -6,6 +6,12 @@ import (
 	"github.com/staroffish/simpleKVM/hid/common"
 )
 
+var mouseButtonMap = map[int]int{
+	common.MouseLeftButton:   LEFTBUTTON,
+	common.MouseMiddleButton: MIDDLEBUTTON,
+	common.MouseRightButton:  RIGHTBUTTON,
+}
+
 func (c *ch9329) KeyBoardCodeToDeviceCode(eventCode byte) (byte, error) {
 
 	// alphabet key
@@ -33,6 +39,13 @@ func (c *ch9329) KeyBoardCodeToDeviceCode(eventCode byte) (byte, error) {
 
 	return 0, fmt.Errorf("known code: %v", eventCode)
 }
+
+//ch9329 mouse button definition
+const (
+	LEFTBUTTON   = 1
+	RIGHTBUTTON  = 1 << 1
+	MIDDLEBUTTON = 1 << 2
+)
 
 // ch9329 key definition - key code
 const (

@@ -71,8 +71,25 @@ function keyUp(e) {
 function mouseMove(e) {
     var xmlmouseHttp = CreateXMLHttpRequest();
     xmlmouseHttp.onreadystatechange = callhandle;
-    xmlmouseHttp.open("POST", "/movemove?x=" + e.clientX + "&y=" + e.clientY, true);
+    xmlmouseHttp.open("POST", "/mousemove?x=" + e.clientX + "&y=" + e.clientY, true);
     xmlmouseHttp.send();
+    return false;
+}
+
+function mouseDown(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mousedown?button=" + e.button, true);
+    xmlmouseHttp.send();
+    return false;
+}
+
+function mouseUp(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mouseup?button=" + e.button, true);
+    xmlmouseHttp.send();
+    return false;
 }
 
 function callhandle() {

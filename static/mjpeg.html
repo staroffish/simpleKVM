@@ -1,8 +1,12 @@
 <html>
 <script type="text/javascript" src="keyevent.js"></script>
+<script type="text/javascript">
+    window.document.oncontextmenu = function () { event.returnValue = false; }//屏蔽鼠标右键 
+</script>
 
 <body onkeydown="return keyDown(event)" onkeyup="return keyUp(event)">
-    <img id="id1" src="/mjpeg" onmousemove="mouseMove(event)" height="1080" width="1920" />
+    <img id="id1" src="/mjpeg" onmousemove="mouseMove(event)" onmousedown="return mouseDown(event)"
+        onmouseup="return mouseUp(event)" height="1080" width="1920" />
 </body>
 
 </html>

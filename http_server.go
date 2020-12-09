@@ -59,7 +59,7 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 		}
 		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
 	})
-	httpServer.POST("/movemove", func(ctx *gin.Context) {
+	httpServer.POST("/mousemove", func(ctx *gin.Context) {
 		x, exists := ctx.GetQuery("x")
 		if !exists {
 			ctx.Data(http.StatusBadRequest, "text/text", []byte("x point dose not exists"))
@@ -83,6 +83,40 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 
 		if err := hid.MoveTo(uint16(xPoint), uint16(yPoint)); err != nil {
 			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("mouse move error")))
+		}
+		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
+	})
+	httpServer.POST("/mousedown", func(ctx *gin.Context) {
+		button, exists := ctx.GetQuery("button")
+		if !exists {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte("button code dose not exists"))
+			return
+		}
+		buttonCode, err := strconv.ParseUint(button, 10, 8)
+		if err != nil {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("invalid button code:%v", buttonCode)))
+			return
+		}
+
+		if err := hid.MouseDown(int(buttonCode)); err != nil {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("mouse down error")))
+		}
+		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
+	})
+	httpServer.POST("/mouseup", func(ctx *gin.Context) {
+		button, exists := ctx.GetQuery("button")
+		if !exists {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte("button code dose not exists"))
+			return
+		}
+		buttonCode, err := strconv.ParseUint(button, 10, 8)
+		if err != nil {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("invalid button code:%v", buttonCode)))
+			return
+		}
+
+		if err := hid.MouseUp(int(buttonCode)); err != nil {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("mouse up error")))
 		}
 		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
 	})

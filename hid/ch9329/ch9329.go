@@ -16,6 +16,7 @@ const (
 	XMOUSEMOVEINDEXHIGH   = 8
 	YMOUSEMOVEINDEXLOW    = 9
 	YMOUSEMOVEINDEXHIGH   = 10
+	MOUSEBUTTONINDEX      = 6
 )
 
 type ch9329 struct {
@@ -91,30 +92,6 @@ func (c *ch9329) CloseDevice() error {
 	return nil
 }
 
-func (c *ch9329) MouseDown(button int) error {
-	var x uint16
-	for x = 1; x <= 2560; x = x + 128 {
-		fmt.Printf("x=%d byte1=%x byte2=%x\n", x, byte((x<<8)>>8), byte(x>>8))
-		hidData := []byte{0x57, 0xAB, 0x00, 0x04, 0x07, 0x02, 0x00, byte((x << 8) >> 8), byte(x >> 8), 0x01, 0x00, 0x00}
-		var totalData uint16
-		for _, data := range hidData {
-			totalData += uint16(data)
-		}
-		hidData = append(hidData, byte((totalData<<8)>>8))
-		n, err := c.device.Write(hidData)
-		if err != nil {
-			return fmt.Errorf("write file error:n=%d, err=%v", n, err)
-		}
-		response := make([]byte, 100)
-		n, err = c.device.Read(response)
-		if err != nil {
-			return fmt.Errorf("read file error: err=%v", err)
-		}
-
-	}
-	return nil
-}
-
 func (c *ch9329) GetModelName() string {
 	return "ch9329"
 }
@@ -172,6 +149,26 @@ func (c *ch9329) MoveTo(x uint16, y uint16) error {
 	}
 
 	return err
+}
+
+func (c *ch9329) MouseDown(button int) error {
+	moveEvent := &ch9329MouseEvent{
+		resultCh:             make(chan error),
+		ch9329MouseMoveEvent: &ch9329MouseMoveEvent{button: button},
+	}
+
+	c.mouseKeyDownEventCh <- moveEvent
+	return <-moveEvent.resultCh
+}
+
+func (c *ch9329) MouseUp(button int) error {
+	moveEvent := &ch9329MouseEvent{
+		resultCh:             make(chan error),
+		ch9329MouseMoveEvent: &ch9329MouseMoveEvent{button: button},
+	}
+
+	c.mouseKeyUpEventCh <- moveEvent
+	return <-moveEvent.resultCh
 }
 
 func (c *ch9329) keyDownKeyUp() {
@@ -273,6 +270,12 @@ func (c *ch9329) mouseOperator() {
 			yCur := c.getDevicePoint(event.yPoint, uint16(c.screenY))
 			command[YMOUSEMOVEINDEXLOW] = yCur[0]
 			command[YMOUSEMOVEINDEXHIGH] = yCur[1]
+		case event := <-c.mouseKeyDownEventCh:
+			resultCh = event.resultCh
+			command[MOUSEBUTTONINDEX] |= byte(mouseButtonMap[event.button])
+		case event := <-c.mouseKeyUpEventCh:
+			resultCh = event.resultCh
+			command[MOUSEBUTTONINDEX] &= byte(^mouseButtonMap[event.button])
 		}
 
 		resultCh <- c.readWriteDevice(command)
