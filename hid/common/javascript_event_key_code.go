@@ -35,7 +35,7 @@ const (
 	COMMA        = 0xbc
 	BRACKETLEFT  = 0xdb
 	BRACKETRIGHT = 0xdd
-	SCORLLLOCK   = 0x91
+	SCROLLLOCK   = 0x91
 )
 
 // js keyboard event key code definition - key code base of alphabet, number, function key

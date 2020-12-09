@@ -12,11 +12,12 @@ const (
 	ALTTRLSHIFTOSKEYINDEX = 5
 	RESPONSESTATUSINDEX   = 5
 	KEYEVENTTIMEOUT       = time.Millisecond * 200
+	MOUSEBUTTONINDEX      = 6
 	XMOUSEMOVEINDEXLOW    = 7
 	XMOUSEMOVEINDEXHIGH   = 8
 	YMOUSEMOVEINDEXLOW    = 9
 	YMOUSEMOVEINDEXHIGH   = 10
-	MOUSEBUTTONINDEX      = 6
+	MOUSESCROLLINDEX      = 11
 )
 
 type ch9329 struct {
@@ -30,7 +31,7 @@ type ch9329 struct {
 	mouseMoveEventCh    chan *ch9329MouseEvent
 	mouseKeyDownEventCh chan *ch9329MouseEvent
 	mouseKeyUpEventCh   chan *ch9329MouseEvent
-	mouseScorllEventCh  chan *ch9329MouseEvent
+	mouseScrollEventCh  chan *ch9329MouseEvent
 }
 
 type ch9329KeyEvent struct {
@@ -52,6 +53,7 @@ type ch9329MouseMoveEvent struct {
 	xPoint uint16
 	yPoint uint16
 	button int
+	scroll int
 }
 
 func NewCh9329(x, y int) *ch9329 {
@@ -66,7 +68,7 @@ func NewCh9329(x, y int) *ch9329 {
 	dev.mouseMoveEventCh = make(chan *ch9329MouseEvent)
 	dev.mouseKeyDownEventCh = make(chan *ch9329MouseEvent)
 	dev.mouseKeyUpEventCh = make(chan *ch9329MouseEvent)
-	dev.mouseScorllEventCh = make(chan *ch9329MouseEvent)
+	dev.mouseScrollEventCh = make(chan *ch9329MouseEvent)
 	return dev
 }
 
@@ -152,23 +154,33 @@ func (c *ch9329) MoveTo(x uint16, y uint16) error {
 }
 
 func (c *ch9329) MouseDown(button int) error {
-	moveEvent := &ch9329MouseEvent{
+	mouseEvent := &ch9329MouseEvent{
 		resultCh:             make(chan error),
 		ch9329MouseMoveEvent: &ch9329MouseMoveEvent{button: button},
 	}
 
-	c.mouseKeyDownEventCh <- moveEvent
-	return <-moveEvent.resultCh
+	c.mouseKeyDownEventCh <- mouseEvent
+	return <-mouseEvent.resultCh
 }
 
 func (c *ch9329) MouseUp(button int) error {
-	moveEvent := &ch9329MouseEvent{
+	mouseEvent := &ch9329MouseEvent{
 		resultCh:             make(chan error),
 		ch9329MouseMoveEvent: &ch9329MouseMoveEvent{button: button},
 	}
 
-	c.mouseKeyUpEventCh <- moveEvent
-	return <-moveEvent.resultCh
+	c.mouseKeyUpEventCh <- mouseEvent
+	return <-mouseEvent.resultCh
+}
+
+func (c *ch9329) MouseScroll(scroll int) error {
+	mouseEvent := &ch9329MouseEvent{
+		resultCh:             make(chan error),
+		ch9329MouseMoveEvent: &ch9329MouseMoveEvent{scroll: scroll},
+	}
+
+	c.mouseScrollEventCh <- mouseEvent
+	return <-mouseEvent.resultCh
 }
 
 func (c *ch9329) keyDownKeyUp() {
@@ -260,6 +272,7 @@ func (c *ch9329) mouseOperator() {
 	var resultCh chan error
 
 	for {
+		command[MOUSESCROLLINDEX] = 0
 		select {
 		case event := <-c.mouseMoveEventCh:
 			resultCh = event.resultCh
@@ -276,6 +289,14 @@ func (c *ch9329) mouseOperator() {
 		case event := <-c.mouseKeyUpEventCh:
 			resultCh = event.resultCh
 			command[MOUSEBUTTONINDEX] &= byte(^mouseButtonMap[event.button])
+		case event := <-c.mouseScrollEventCh:
+			resultCh = event.resultCh
+			fmt.Printf("scroll=%v\n", event.scroll)
+			if event.scroll < 0 {
+				command[MOUSESCROLLINDEX] = 0x01
+			} else {
+				command[MOUSESCROLLINDEX] = 0xFF
+			}
 		}
 
 		resultCh <- c.readWriteDevice(command)

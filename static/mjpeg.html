@@ -1,12 +1,12 @@
 <html>
 <script type="text/javascript" src="keyevent.js"></script>
 <script type="text/javascript">
-    window.document.oncontextmenu = function () { event.returnValue = false; }//屏蔽鼠标右键 
+    window.document.oncontextmenu = function () { event.returnValue = false; }//disable right mouse button event  
 </script>
 
 <body onkeydown="return keyDown(event)" onkeyup="return keyUp(event)">
     <img id="id1" src="/mjpeg" onmousemove="mouseMove(event)" onmousedown="return mouseDown(event)"
-        onmouseup="return mouseUp(event)" height="1080" width="1920" />
+        onmouseup="return mouseUp(event)" onwheel="return mouseScroll(event)" height="1080" width="1920" />
 </body>
 
 </html>

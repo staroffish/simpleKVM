@@ -120,6 +120,23 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 		}
 		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
 	})
+	httpServer.POST("/mousescroll", func(ctx *gin.Context) {
+		scroll, exists := ctx.GetQuery("scroll")
+		if !exists {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte("scroll code dose not exists"))
+			return
+		}
+		scrollCode, err := strconv.ParseInt(scroll, 10, 16)
+		if err != nil {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("invalid scroll code:%v", scrollCode)))
+			return
+		}
+
+		if err := hid.MouseScroll(int(scrollCode)); err != nil {
+			ctx.Data(http.StatusBadRequest, "text/text", []byte(fmt.Sprintf("mouse up error")))
+		}
+		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
+	})
 	httpServer.Static("/static", "static")
 
 	httpServer.Run(addr)

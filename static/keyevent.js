@@ -92,6 +92,14 @@ function mouseUp(e) {
     return false;
 }
 
+function mouseScroll(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mousescroll?scroll=" + e.deltaY, true);
+    xmlmouseHttp.send();
+    return false;
+}
+
 function callhandle() {
     // if (xmlhttp.status != 200) {
     //     console.log(xmlhttp.responseText);

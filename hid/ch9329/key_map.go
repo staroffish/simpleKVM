@@ -71,7 +71,7 @@ const (
 
 const (
 	PRINTSCREEN = iota + 0x46
-	SCORLLLOCK
+	SCROLLLOCK
 	PAUSEBRAKE
 	INSERT
 	HOME
@@ -127,7 +127,7 @@ var keyMapping map[byte]byte = map[byte]byte{
 	common.SLASH:        SLASH,
 	common.CAPSLOCK:     CAPSLOCK,
 	common.PRINTSCREEN:  PRINTSCREEN,
-	common.SCORLLLOCK:   SCORLLLOCK,
+	common.SCROLLLOCK:   SCROLLLOCK,
 	common.PAUSEBRAKE:   PAUSEBRAKE,
 	common.INSERT:       INSERT,
 	common.HOME:         HOME,
