@@ -71,7 +71,7 @@ func run(_ *cobra.Command, _ []string) {
 
 	fd := file.Fd()
 
-	dev, err := capture.NewV4l2Device(fd, format, uint32(frameRate), uint32(height), uint32(width), 3)
+	dev, err := capture.NewV4l2Device(fd, format, uint32(frameRate), uint32(width), uint32(height), 3)
 	if err != nil {
 		log.PrintInfo("Init return error: %v", err)
 		return
