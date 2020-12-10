@@ -80,7 +80,7 @@ function onKeyUp(e) {
 function mouseMove(e) {
     var xmlmouseHttp = CreateXMLHttpRequest();
     xmlmouseHttp.onreadystatechange = callhandle;
-    xmlmouseHttp.open("POST", "/mousemove?x=" + e.clientX + "&y=" + e.clientY, true);
+    xmlmouseHttp.open("POST", "/mousemove?x=" + e.offsetX + "&y=" + e.offsetY, true);
     xmlmouseHttp.send();
     return false;
 }
