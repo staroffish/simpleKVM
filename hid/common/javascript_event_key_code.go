@@ -1,6 +1,6 @@
 package common
 
-// js event key code definition
+// js keyboard event key code definition
 const (
 	BACKSPACE    = 0x8
 	ENTER        = 0xd
@@ -35,10 +35,10 @@ const (
 	COMMA        = 0xbc
 	BRACKETLEFT  = 0xdb
 	BRACKETRIGHT = 0xdd
-	SCORLLLOCK   = 0x91
+	SCROLLLOCK   = 0x91
 )
 
-// js event key code definition - key code base of alphabet, number, function key
+// js keyboard event key code definition - key code base of alphabet, number, function key
 const (
 	// alphabet key code base
 	ALPHABETBASE = 0x41
@@ -54,6 +54,13 @@ const (
 	FUNCTIONBASE = 0x70
 
 	FUNCTIONBASELENGTH = 12
+)
+
+// js mouse event key code
+const (
+	MouseLeftButton = iota
+	MouseMiddleButton
+	MouseRightButton
 )
 
 func IsAltCtrlShiftOsKey(keyCode byte) bool {

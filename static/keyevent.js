@@ -1,4 +1,3 @@
-var xmlCtrlKeyhttp = CreateXMLHttpRequest();
 var isFirefox = isFirefoxBrowser();
 
 function CreateXMLHttpRequest() {
@@ -11,7 +10,34 @@ function CreateXMLHttpRequest() {
     return xmlReq;
 }
 function callhandle() { }
-function keyDown(e) {
+
+function shortcut(arr) {
+
+    for (var i = 0; i < arr.length; i++) {
+        keyDown(arr[i]);
+    }
+    // for (var i = 0; i < arr.length; i++) {
+    //     keyUp(arr[i]);
+    // }
+}
+
+function keyDown(key) {
+    var xmlDownHttp = CreateXMLHttpRequest();
+    var keynum = convertKeyCodeToFirefoxStandard(key)
+    xmlDownHttp.onreadystatechange = callhandle;
+    xmlDownHttp.open("POST", "/keydown?key_code=" + keynum, true);
+    xmlDownHttp.send();
+}
+
+function keyUp(key) {
+    var xmlDownHttp = CreateXMLHttpRequest();
+    var keynum = convertKeyCodeToFirefoxStandard(key)
+    xmlDownHttp.onreadystatechange = callhandle;
+    xmlDownHttp.open("POST", "/keyup?key_code=" + keynum, true);
+    xmlDownHttp.send();
+}
+
+function onKeyDown(e) {
     if (window.event) // IE
     {
         keynum = e.keyCode
@@ -22,36 +48,23 @@ function keyDown(e) {
     }
 
     if (e.ctrlKey === true && e.key != 'Control') {
-
-        xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 17, true);
-        xmlCtrlKeyhttp.send();
+        keyDown(17)
     }
     else if (e.shiftKey === true && e.key != 'Shift') {
-        xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 16, true);
-        xmlCtrlKeyhttp.send();
+        keyDown(16)
     }
     else if (e.altKey === true && e.key != 'Alt') {
-        xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 18, true);
-        xmlCtrlKeyhttp.send();
+        keyDown(18)
     }
     else if (e.metaKey === true && e.key != 'OS' && e.key != 'Meta') {
-        xmlCtrlKeyhttp.onreadystatechange = callhandle;
-        xmlCtrlKeyhttp.open("POST", "/keydown?key_code=" + 91, true);
-        xmlCtrlKeyhttp.send();
+        keyDown(91)
     }
 
-    var xmlDownHttp = CreateXMLHttpRequest();
-    keynum = convertKeyCodeToFirefoxStandard(keynum)
-    xmlDownHttp.onreadystatechange = callhandle;
-    xmlDownHttp.open("POST", "/keydown?key_code=" + keynum, true);
-    xmlDownHttp.send();
+    keyDown(keynum)
     return false;
 }
 
-function keyUp(e) {
+function onKeyUp(e) {
     if (window.event) // IE
     {
         keynum = e.keyCode
@@ -60,11 +73,39 @@ function keyUp(e) {
     {
         keynum = e.which
     }
-    var xmlUpHttp = CreateXMLHttpRequest();
-    keynum = convertKeyCodeToFirefoxStandard(keynum)
-    xmlUpHttp.onreadystatechange = callhandle;
-    xmlUpHttp.open("POST", "/keyup?key_code=" + keynum, true);
-    xmlUpHttp.send();
+    keyUp(keynum)
+    return false;
+}
+
+function mouseMove(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mousemove?x=" + e.clientX + "&y=" + e.clientY, true);
+    xmlmouseHttp.send();
+    return false;
+}
+
+function mouseDown(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mousedown?button=" + e.button, true);
+    xmlmouseHttp.send();
+    return false;
+}
+
+function mouseUp(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mouseup?button=" + e.button, true);
+    xmlmouseHttp.send();
+    return false;
+}
+
+function mouseScroll(e) {
+    var xmlmouseHttp = CreateXMLHttpRequest();
+    xmlmouseHttp.onreadystatechange = callhandle;
+    xmlmouseHttp.open("POST", "/mousescroll?scroll=" + e.deltaY, true);
+    xmlmouseHttp.send();
     return false;
 }
 

@@ -7,17 +7,11 @@ import (
 	"github.com/staroffish/simpleKVM/hid/common"
 )
 
-const (
-	MouseLeftButton = iota
-	MouseRightButton
-	MouseMiddleButton
-)
-
 var deviceMap map[string]common.Hid
 
-func init() {
+func InitHid(x, y int) {
 	deviceMap = make(map[string]common.Hid)
-	ch9329Dev := ch9329.NewCh9329()
+	ch9329Dev := ch9329.NewCh9329(x, y)
 	deviceMap[ch9329Dev.GetModelName()] = ch9329Dev
 }
 

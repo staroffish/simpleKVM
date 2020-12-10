@@ -140,20 +140,6 @@ func EnumFormat(fd uintptr, typ int, index uint32) (*V4l2Fmtdesc, error) {
 	return desc, nil
 }
 
-func GetStandard(fd uintptr) error {
-	index := 0
-	for {
-		standard := C.struct_v4l2_standard{}
-		standard.index = C.__u32(index)
-		ret, err := C.ioctl3arg(C.int(fd), C.VIDIOC_ENUMSTD, unsafe.Pointer(&standard))
-		if ret < 0 {
-			return fmt.Errorf("call VIDIOC_ENUMSTD  error: %v", err)
-		}
-		fmt.Printf("index=%d, id=%d, name=%s, Numerator=%d, Denominator=%d", index, standard.id, standard.name, standard.frameperiod.numerator, standard.frameperiod.denominator)
-		index++
-	}
-}
-
 func GetFrameFormat(fd uintptr, typ uint32) (*V4l2Format, error) {
 	cFormat := &C.struct_v4l2_format{}
 	cFormat._type = C.__u32(typ)
@@ -175,11 +161,8 @@ func GetFrameFormat(fd uintptr, typ uint32) (*V4l2Format, error) {
 	format.Pix.Colorspace = uint32(pix.colorspace)
 	format.Pix.Priv = uint32(pix.priv)
 	format.Pix.Flags = uint32(pix.flags)
-	// format.Pix.Uycbcr_enc = uint32(pix.ycbcr_enc)
 	format.Pix.Quantization = uint32(pix.quantization)
 	format.Pix.Xfer_func = uint32(pix.xfer_func)
-
-	fmt.Printf("%v\n", format)
 
 	return format, nil
 }

@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/staroffish/simpleKVM/capture/v4l2"
+	"github.com/staroffish/simpleKVM/log"
 )
 
 type frameBuffer struct {
@@ -44,6 +45,8 @@ func NewV4l2Device(fileDescription uintptr, imageDataFormat, frameRate, width, h
 
 func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCount uint32) (err error) {
 
+	log.PrintInfo("capture device info")
+	log.PrintInfo("----------------------------------")
 	c.bufferIndexCh = make(chan int)
 
 	for n, _ := range c.fBuffer {
@@ -74,17 +77,17 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 			}
 			break
 		}
-		fmt.Printf("Format=%s\n", format.Description)
+		log.PrintInfo("supported format: %s", format.Description)
 		formatDescs[format.Pixelformat] = format
 		index++
 	}
 
 	formatDesc, ok := formatDescs[imageDataFormat]
 	if !ok {
-		return fmt.Errorf("unsupported image format\n")
+		return fmt.Errorf("unsupported image format")
 	}
 
-	fmt.Printf("use format %s\n", formatDesc.Description)
+	log.PrintInfo("use format: %s", formatDesc.Description)
 	format := &v4l2.V4l2Format{
 		Type: c.streamingType,
 		Pix: &v4l2.V4l2PixFormat{
@@ -112,11 +115,19 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 	streamParam.CaptureParam.Fract.Numerator = 1
 	streamParam.CaptureParam.Fract.Denominator = frameRate
 
+	log.PrintInfo("set frame rate to 1/%d", frameRate)
+
 	if err := v4l2.SetStreamParam(c.fd, streamParam); err != nil {
 		return fmt.Errorf("SetStreamParam error: %v", err)
 	}
 
-	fmt.Printf("type=%v CaptureParam=%v Fract=%v\n", c.streamingType, streamParam.CaptureParam, streamParam.CaptureParam.Fract)
+	streamParam, err = v4l2.GetStreamParam(c.fd, c.streamingType)
+	if err != nil {
+		return fmt.Errorf("GetStreamParam error: %v", err)
+	}
+
+	log.PrintInfo("setted frame rate. device frame rate: %d/%d", streamParam.CaptureParam.Fract.Numerator, streamParam.CaptureParam.Fract.Denominator)
+	log.PrintInfo("----------------------------------")
 
 	if err := v4l2.RequestBuffer(c.fd, reqBuff); err != nil {
 		return err
@@ -162,7 +173,7 @@ func (c *CaptureDevice) StartStreaming() (err error) {
 	go func(ctx context.Context) {
 		defer func() {
 			if err := v4l2.StreamOff(c.fd, c.streamingType); err != nil {
-				fmt.Printf("%v\n", err)
+				log.PrintInfo("%v", err)
 			}
 		}()
 
@@ -189,13 +200,13 @@ func (c *CaptureDevice) StartStreaming() (err error) {
 		for {
 			buffer, err := v4l2.DeQueueBuffer(c.fd, c.streamingType)
 			if err != nil {
-				fmt.Printf("%v\n", err)
+				log.PrintInfo("%v", err)
 			}
 			c.fBuffer[index].bytesUsed = buffer.BytesUsed
 			copy(c.fBuffer[index].data, c.queueBuffer[buffer.Index][:buffer.BytesUsed])
 
 			if err = v4l2.QueueBuffer(c.fd, c.streamingType, buffer.Index); err != nil {
-				fmt.Printf("%v\n", err)
+				log.PrintInfo("%v", err)
 				return
 			}
 			select {
