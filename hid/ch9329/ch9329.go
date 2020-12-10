@@ -195,8 +195,8 @@ func (c *ch9329) keyDownKeyUp() {
 		select {
 		case key := <-c.keyDownEventCh:
 			if key.isControlKey {
+				log.PrintDebug("ctrl/alt/shift/win key down %v", key)
 				if command[ALTTRLSHIFTOSKEYINDEX]&key.keyCode > 0 {
-					log.PrintDebug("ctrl/alt/shift/win key down %v", key)
 					keyDownTimeoutMap[key.ch9329Key] = time.Now()
 					key.resultCh <- nil
 					continue

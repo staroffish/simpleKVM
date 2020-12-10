@@ -36,7 +36,7 @@ func main() {
 	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 24, "The frame rate")
 	rootCmd.PersistentFlags().IntVarP(&width, "width", "", 1920, "screen width")
 	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1080, "screen height")
-	rootCmd.PersistentFlags().IntVarP(&logLevel, "log_level", "", log.LOG_LEVEL_INFO, "log level")
+	rootCmd.PersistentFlags().IntVarP(&logLevel, "log_level", "", log.LOG_LEVEL_INFO, "log level:\n0: DEBUG\n1: INFO")
 	rootCmd.PersistentFlags().StringVarP(&logFilePath, "log_file", "l", "", "log file path. if not present, log will output to stdout")
 	rootCmd.Execute()
 
