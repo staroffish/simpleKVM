@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/staroffish/simpleKVM/hid/common"
+	"github.com/staroffish/simpleKVM/log"
 	"github.com/tarm/serial"
 )
 
@@ -83,7 +84,7 @@ func (c *ch9329) OpenDevice(args ...string) error {
 		return err
 	}
 	c.device = port
-	fmt.Printf("opened device\n")
+	log.PrintInfo("opened hid device %s", devicePath)
 	go c.keyDownKeyUp()
 	go c.mouseOperator()
 	return nil
@@ -100,7 +101,7 @@ func (c *ch9329) GetModelName() string {
 
 func (c *ch9329) KeyDown(eventKeyCode byte) error {
 
-	fmt.Printf("get event key down %v\n", eventKeyCode)
+	log.PrintDebug("get event key down %v", eventKeyCode)
 	isControlKey := common.IsAltCtrlShiftOsKey(eventKeyCode)
 	devkeyCode, err := c.KeyBoardCodeToDeviceCode(eventKeyCode)
 	if err != nil {
@@ -117,7 +118,7 @@ func (c *ch9329) KeyDown(eventKeyCode byte) error {
 }
 
 func (c *ch9329) KeyUp(eventKeyCode byte) error {
-
+	log.PrintDebug("get event key up %v", eventKeyCode)
 	isControlKey := common.IsAltCtrlShiftOsKey(eventKeyCode)
 	devkeyCode, err := c.KeyBoardCodeToDeviceCode(eventKeyCode)
 	if err != nil {
@@ -195,14 +196,14 @@ func (c *ch9329) keyDownKeyUp() {
 		case key := <-c.keyDownEventCh:
 			if key.isControlKey {
 				if command[ALTTRLSHIFTOSKEYINDEX]&key.keyCode > 0 {
-					fmt.Printf("get ctrl key down %v\n", key)
+					log.PrintDebug("ctrl/alt/shift/win key down %v", key)
 					keyDownTimeoutMap[key.ch9329Key] = time.Now()
 					key.resultCh <- nil
 					continue
 				}
 				command[ALTTRLSHIFTOSKEYINDEX] = command[ALTTRLSHIFTOSKEYINDEX] | key.keyCode
 			} else {
-				fmt.Printf("get normal key down %v\n", key)
+				log.PrintDebug("normal key down %v", key)
 				if _, ok := keyCommandIndexMap[key.keyCode]; ok {
 					keyDownTimeoutMap[key.ch9329Key] = time.Now()
 					key.resultCh <- nil
@@ -213,9 +214,9 @@ func (c *ch9329) keyDownKeyUp() {
 					continue
 				}
 				for index := range emptyIndexMap {
-					fmt.Printf("index=%d\n", index)
 					command[index] = key.keyCode
 					delete(emptyIndexMap, index)
+					log.PrintDebug("deleted empty map, index:%d", index)
 					keyCommandIndexMap[key.keyCode] = index
 					break
 				}
@@ -224,8 +225,8 @@ func (c *ch9329) keyDownKeyUp() {
 			resultCh = key.resultCh
 
 		case key := <-c.keyUpEventCh:
-			fmt.Printf("get key up %v\n", key)
 			if key.isControlKey {
+				log.PrintDebug("ctrl/alt/shift/win key up %v", key)
 				if command[ALTTRLSHIFTOSKEYINDEX]&key.keyCode == 0 {
 					key.resultCh <- nil
 					continue
@@ -237,19 +238,19 @@ func (c *ch9329) keyDownKeyUp() {
 					key.resultCh <- nil
 					continue
 				}
-				fmt.Printf("index=%d\n", index)
 				command[index] = 0x00
 				delete(keyCommandIndexMap, key.keyCode)
 				emptyIndexMap[index] = 0
+				log.PrintDebug("setted empty map, index:%d", index)
 			}
 			delete(keyDownTimeoutMap, key.ch9329Key)
 			resultCh = key.resultCh
 		case <-time.Tick(100 * time.Millisecond):
 			now := time.Now()
 			for key, keyDownTime := range keyDownTimeoutMap {
-				fmt.Printf("now sub keydown time %v, key=%v command=%v \n", now.Sub(keyDownTime), key, command)
+				log.PrintDebug("keydown time %v, key=%v", now.Sub(keyDownTime).Milliseconds(), key)
 				if now.Sub(keyDownTime) > KEYEVENTTIMEOUT {
-					fmt.Printf("key time out %v:%v\n", keyDownTime, key)
+					log.PrintInfo("key down time out. downtime=%v key=%v", keyDownTime.Format("2006/01/02 15:04:05.000"), key)
 					go func() {
 						upEvent := &ch9329KeyEvent{
 							ch9329Key: key,
@@ -291,7 +292,7 @@ func (c *ch9329) mouseOperator() {
 			command[MOUSEBUTTONINDEX] &= byte(^mouseButtonMap[event.button])
 		case event := <-c.mouseScrollEventCh:
 			resultCh = event.resultCh
-			fmt.Printf("scroll=%v\n", event.scroll)
+			log.PrintDebug("scroll=%v", event.scroll)
 			if event.scroll < 0 {
 				command[MOUSESCROLLINDEX] = 0x01
 			} else {
@@ -311,10 +312,10 @@ func (c *ch9329) readWriteDevice(command []byte) error {
 		sum += b
 	}
 
-	fmt.Printf("sum = %v\n", sum)
+	log.PrintDebug("sum = %v", sum)
 	command[sumIndex] = sum
 
-	fmt.Printf("commond=%v\n", command)
+	log.PrintDebug("commond=%v", command)
 	n, err := c.device.Write(command)
 	if err != nil {
 		return fmt.Errorf("write file error:n=%d, err=%v", n, err)
@@ -334,6 +335,6 @@ func (c *ch9329) getDevicePoint(point, screenMax uint16) [2]byte {
 	curse := (uint32(point) * 4096) / uint32(screenMax)
 	devicePoint[0] = byte(uint16(curse) & 0x00FF)
 	devicePoint[1] = byte(uint16(curse) >> 8)
-	fmt.Printf("point=%d maxX%d curse=%d devicePoint=%v\n", point, screenMax, curse, devicePoint)
+	log.PrintDebug("point=%d max=%d curse=%d devicePoint=%v", point, screenMax, curse, devicePoint)
 	return devicePoint
 }

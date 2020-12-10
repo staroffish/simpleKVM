@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/staroffish/simpleKVM/capture"
 	"github.com/staroffish/simpleKVM/hid"
+	"github.com/staroffish/simpleKVM/log"
 )
 
 var (
@@ -18,6 +19,8 @@ var (
 	width         int
 	hidDevice     string
 	hidModel      string
+	logLevel      int
+	logFilePath   string
 )
 
 func main() {
@@ -31,25 +34,38 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model. supported: ch9329")
 	rootCmd.PersistentFlags().StringVarP(&frameFormat, "format", "f", "mjpeg", "The frame format. supported: mjpeg")
 	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 24, "The frame rate")
-	rootCmd.PersistentFlags().IntVarP(&width, "width", "", 1920, "width")
-	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1080, "height")
+	rootCmd.PersistentFlags().IntVarP(&width, "width", "", 1920, "screen width")
+	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1080, "screen height")
+	rootCmd.PersistentFlags().IntVarP(&logLevel, "log_level", "", log.LOG_LEVEL_INFO, "log level")
+	rootCmd.PersistentFlags().StringVarP(&logFilePath, "log_file", "l", "", "log file path. if not present, log will output to stdout")
 	rootCmd.Execute()
 
 }
 
 func run(_ *cobra.Command, _ []string) {
 
+	logOutput := os.Stdout
+	if logFilePath != "" {
+		var err error
+		logOutput, err = os.OpenFile(logFilePath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+		if err != nil {
+			fmt.Printf("open log file error:%v\n", err)
+			os.Exit(-1)
+		}
+	}
+
+	log.InitLog(logLevel, logOutput)
+
 	format, err := capture.GetFrameFormatCodeByString(frameFormat)
 	if err != nil {
-		fmt.Printf("%v", err)
+		log.PrintInfo("%v", err)
+		os.Exit(-1)
 	}
 
 	file, err := os.OpenFile(captureDevice, os.O_RDWR, 0)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			fmt.Printf("open %s error: %v", captureDevice, err)
-		}
-		return
+		log.PrintInfo("open %s error: %v", captureDevice, err)
+		os.Exit(-1)
 	}
 	defer file.Close()
 
@@ -57,13 +73,13 @@ func run(_ *cobra.Command, _ []string) {
 
 	dev, err := capture.NewV4l2Device(fd, format, uint32(frameRate), uint32(height), uint32(width), 3)
 	if err != nil {
-		fmt.Printf("Init return error: %v", err)
+		log.PrintInfo("Init return error: %v", err)
 		return
 	}
 
 	err = dev.StartStreaming()
 	if err != nil {
-		fmt.Printf("start streaming error:%v", err)
+		log.PrintInfo("start streaming error:%v", err)
 		return
 	}
 
@@ -71,12 +87,12 @@ func run(_ *cobra.Command, _ []string) {
 
 	hidDev, err := hid.GetHidDevice(hidModel)
 	if err != nil {
-		fmt.Printf("get hid device error:%v", err)
+		log.PrintInfo("get hid device error:%v", err)
 		return
 	}
 
 	if err := hidDev.OpenDevice(hidDevice); err != nil {
-		fmt.Printf("open hid device error:%v", err)
+		log.PrintInfo("open hid device error:%v", err)
 		return
 	}
 
