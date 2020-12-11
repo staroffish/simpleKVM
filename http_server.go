@@ -163,8 +163,10 @@ var httpTemplateFormat = `<html>
 <body onkeydown="return onKeyDown(event)" onkeyup="return onKeyUp(event)">
     <button onclick="shortcut([17,18,46])">ctrl+alt+del</button>
     <button onclick="shortcut([91, 76])">Win+L</button>
-    <br>
-	%s
+	<br>
+	<table border="1">
+	<tr><td>%s</td></tr>	
+	</table>
 </body>
 
 </html>`
