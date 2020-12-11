@@ -103,7 +103,7 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 	}
 	c.pixelformat = formatDesc.Pixelformat
 	log.PrintInfo("use frame format: %s", formatDesc.Description)
-	log.PrintInfo("set resolution: %d:%d", width, height)
+	log.PrintInfo("set resolution: %dx%d", width, height)
 	if err := v4l2.SetFrameFormat(c.fd, format); err != nil {
 		return fmt.Errorf("SetFrameSize error: %v", err)
 	}
@@ -112,7 +112,7 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 	if err != nil {
 		return fmt.Errorf("GetFrameFormat error: %v", err)
 	}
-	log.PrintInfo("seted resolution: %d:%d", format.Pix.Width, format.Pix.Height)
+	log.PrintInfo("seted resolution: %dx%d", format.Pix.Width, format.Pix.Height)
 
 	reqBuff := &v4l2.V4l2RequestBuffers{
 		Count:  bufferCount,

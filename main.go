@@ -31,7 +31,7 @@ func main() {
 		Run:   run,
 	}
 
-	rootCmd.PersistentFlags().StringVarP(&httpAddr, "addr", "a", "0.0.0.0:8118", "ip address of http server")
+	rootCmd.PersistentFlags().StringVarP(&httpAddr, "addr", "a", "0.0.0.0:8181", "ip address of http server")
 	rootCmd.PersistentFlags().StringVarP(&captureDevice, "capture", "", "/dev/video0", "The path of capture device")
 	rootCmd.PersistentFlags().StringVarP(&hidDevice, "hid", "", "/dev/ttyUSB0", "The path of hid device")
 	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model. supported: ch9329")
