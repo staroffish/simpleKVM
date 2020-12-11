@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/staroffish/simpleKVM/capture"
 	"github.com/staroffish/simpleKVM/hid/common"
+	"github.com/staroffish/simpleKVM/log"
 	"github.com/staroffish/simpleKVM/streamer"
 )
 
@@ -17,13 +18,24 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 	httpServer := gin.New()
 	// gin.Default().Use()
 
-	httpServer.GET("/mjpeg", func(ctx *gin.Context) {
-		boundary := "frame"
-		ctx.Writer.Header().Add("Content-Type", fmt.Sprintf("multipart/x-mixed-replace; boundary=%s", boundary))
-		ctx.Writer.WriteHeader(http.StatusOK)
-		mjpegStreamer := streamer.NewMjpegStreamer(dev, boundary)
-		mjpegStreamer.Streaming(ctx.Writer)
+	httpStreamer, err := streamer.NewStreamer(dev)
+	if err != nil {
+		log.PrintInfo("new streamer error : %v", err)
+		return
+	}
+
+	path := httpStreamer.Path()
+	htmlElement := httpStreamer.HtmlElement()
+	httpHandler := httpStreamer.Handler()
+
+	indexPage := fmt.Sprintf(httpTemplateFormat, htmlElement)
+
+	httpServer.GET("/", func(ctx *gin.Context) {
+		ctx.Data(http.StatusOK, "text/html", []byte(indexPage))
 	})
+
+	httpServer.GET(path, httpHandler)
+
 	httpServer.POST("/keydown", func(ctx *gin.Context) {
 		keyCodeStr, exists := ctx.GetQuery("key_code")
 		if !exists {
@@ -141,3 +153,18 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 
 	httpServer.Run(addr)
 }
+
+var httpTemplateFormat = `<html>
+<script type="text/javascript" src="/static/keyevent.js"></script>
+<script type="text/javascript">
+    window.document.oncontextmenu = function () { event.returnValue = false; }//disable right mouse button event  
+</script>
+
+<body onkeydown="return onKeyDown(event)" onkeyup="return onKeyUp(event)">
+    <button onclick="shortcut([17,18,46])">ctrl+alt+del</button>
+    <button onclick="shortcut([91, 76])">Win+L</button>
+    <br>
+	%s
+</body>
+
+</html>`

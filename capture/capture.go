@@ -22,6 +22,9 @@ type CaptureDevice struct {
 	cancel        context.CancelFunc
 	fBuffer       [256]*frameBuffer
 	bufferIndexCh chan int
+	width         uint32
+	height        uint32
+	pixelformat   uint32
 }
 
 var frameFormatNameToCode = map[string]uint32{
@@ -38,7 +41,9 @@ func GetFrameFormatCodeByString(name string) (uint32, error) {
 
 func NewV4l2Device(fileDescription uintptr, imageDataFormat, frameRate, width, height, bufferCount uint32) (*CaptureDevice, error) {
 	c := &CaptureDevice{
-		fd: fileDescription,
+		fd:     fileDescription,
+		width:  width,
+		height: height,
 	}
 	return c, c.init(imageDataFormat, frameRate, width, height, bufferCount)
 }
@@ -77,7 +82,7 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 			}
 			break
 		}
-		log.PrintInfo("supported format: %s", format.Description)
+		log.PrintInfo("supported frame format: %s", format.Description)
 		formatDescs[format.Pixelformat] = format
 		index++
 	}
@@ -87,7 +92,6 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 		return fmt.Errorf("unsupported image format")
 	}
 
-	log.PrintInfo("use format: %s", formatDesc.Description)
 	format := &v4l2.V4l2Format{
 		Type: c.streamingType,
 		Pix: &v4l2.V4l2PixFormat{
@@ -97,9 +101,18 @@ func (c *CaptureDevice) init(imageDataFormat, frameRate, width, height, bufferCo
 			Pixelformat: formatDesc.Pixelformat,
 		},
 	}
+	c.pixelformat = formatDesc.Pixelformat
+	log.PrintInfo("use frame format: %s", formatDesc.Description)
+	log.PrintInfo("set resolution: %d:%d", width, height)
 	if err := v4l2.SetFrameFormat(c.fd, format); err != nil {
 		return fmt.Errorf("SetFrameSize error: %v", err)
 	}
+
+	format, err = v4l2.GetFrameFormat(c.fd, c.streamingType)
+	if err != nil {
+		return fmt.Errorf("GetFrameFormat error: %v", err)
+	}
+	log.PrintInfo("seted resolution: %d:%d", format.Pix.Width, format.Pix.Height)
 
 	reqBuff := &v4l2.V4l2RequestBuffers{
 		Count:  bufferCount,
@@ -246,4 +259,16 @@ func (c *CaptureDevice) StopStreaming() error {
 func (c *CaptureDevice) GetFrame() []byte {
 	index := <-c.bufferIndexCh
 	return c.fBuffer[index].data[:c.fBuffer[index].bytesUsed]
+}
+
+func (c *CaptureDevice) GetFormat() uint32 {
+	return c.pixelformat
+}
+
+func (c *CaptureDevice) GetWidth() uint32 {
+	return c.width
+}
+
+func (c *CaptureDevice) GetHeight() uint32 {
+	return c.height
 }

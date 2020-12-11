@@ -3,29 +3,55 @@ package streamer
 import (
 	"fmt"
 	"io"
+	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/staroffish/simpleKVM/capture"
+	"github.com/staroffish/simpleKVM/capture/v4l2"
 )
 
 type Streamer interface {
 	Streaming(io.Writer) error
+	Handler() func(ctx *gin.Context)
+	Path() string
+	HtmlElement() string
 }
 
 type baseStreamer struct {
-	dev *capture.CaptureDevice
+	dev    *capture.CaptureDevice
+	height int
+	width  int
 }
 
-func (b *baseStreamer) Streaming() error { return nil }
+func (b *baseStreamer) Streaming() error                { return nil }
+func (b *baseStreamer) Handler() func(ctx *gin.Context) { return nil }
+func (b *baseStreamer) Path() string                    { return "" }
+func (b *baseStreamer) HtmlElement() string             { return "" }
 
 type MjpegStreamer struct {
 	*baseStreamer
 	boundary string
 }
 
-func NewMjpegStreamer(dev *capture.CaptureDevice, boundary string) *MjpegStreamer {
+func NewStreamer(dev *capture.CaptureDevice) (Streamer, error) {
+	var streamer Streamer
+	switch dev.GetFormat() {
+	case v4l2.V4L2_PIX_FMT_MJPEG:
+		return NewMjpegStreamer(dev, "frame", int(dev.GetWidth()), int(dev.GetHeight())), nil
+	default:
+		return nil, fmt.Errorf("unsupported streamer type")
+	}
+	return streamer, nil
+}
+
+func NewMjpegStreamer(dev *capture.CaptureDevice, boundary string, width int, height int) *MjpegStreamer {
 	return &MjpegStreamer{
-		baseStreamer: &baseStreamer{dev},
-		boundary:     boundary,
+		baseStreamer: &baseStreamer{
+			dev:    dev,
+			height: height,
+			width:  width,
+		},
+		boundary: boundary,
 	}
 }
 
@@ -55,4 +81,24 @@ func (m *MjpegStreamer) Streaming(writer io.Writer) error {
 		writer.Write([]byte("\r\n"))
 	}
 
+}
+
+func (m *MjpegStreamer) Handler() func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		ctx.Writer.Header().Add("Content-Type", fmt.Sprintf("multipart/x-mixed-replace; boundary=%s", m.boundary))
+		ctx.Writer.WriteHeader(http.StatusOK)
+		m.Streaming(ctx.Writer)
+	}
+}
+
+func (m *MjpegStreamer) Path() string {
+	return "/mjpeg"
+}
+
+func (m *MjpegStreamer) HtmlElement() string {
+	return fmt.Sprintf(`<img src="%s" onmousemove="mouseMove(event)" onmousedown="return mouseDown(event)" onmouseup="return mouseUp(event)" onwheel="return mouseScroll(event)" width="%d" height="%d" />`,
+		m.Path(),
+		m.width,
+		m.height,
+	)
 }
