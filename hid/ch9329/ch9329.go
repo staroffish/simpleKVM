@@ -188,6 +188,7 @@ func (c *ch9329) keyDownKeyUp() {
 	keyCommandIndexMap := map[byte]uint{}
 	emptyIndexMap := map[uint]uint{7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12}
 	keyDownTimeoutMap := map[ch9329Key]time.Time{}
+	resetKeyTick := time.Tick(100 * time.Millisecond)
 
 	command := []byte{0x57, 0xAB, 0x00, 0x02, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	var resultCh chan error
@@ -245,7 +246,7 @@ func (c *ch9329) keyDownKeyUp() {
 			}
 			delete(keyDownTimeoutMap, key.ch9329Key)
 			resultCh = key.resultCh
-		case <-time.Tick(100 * time.Millisecond):
+		case <-resetKeyTick:
 			now := time.Now()
 			for key, keyDownTime := range keyDownTimeoutMap {
 				log.PrintDebug("keydown time %v, key=%v", now.Sub(keyDownTime).Milliseconds(), key)
