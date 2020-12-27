@@ -23,16 +23,18 @@ const (
 
 type ch9329 struct {
 	*common.BaseHid
-	device              *serial.Port
-	screenX             int
-	screenY             int
-	pressedKey          map[byte]byte
-	keyDownEventCh      chan *ch9329KeyEvent
-	keyUpEventCh        chan *ch9329KeyEvent
-	mouseMoveEventCh    chan *ch9329MouseEvent
-	mouseKeyDownEventCh chan *ch9329MouseEvent
-	mouseKeyUpEventCh   chan *ch9329MouseEvent
-	mouseScrollEventCh  chan *ch9329MouseEvent
+	device                  *serial.Port
+	screenX                 int
+	screenY                 int
+	pressedKey              map[byte]byte
+	keyDownEventCh          chan *ch9329KeyEvent
+	keyUpEventCh            chan *ch9329KeyEvent
+	mouseMoveEventCh        chan *ch9329MouseEvent
+	mouseKeyDownEventCh     chan *ch9329MouseEvent
+	mouseKeyUpEventCh       chan *ch9329MouseEvent
+	mouseScrollEventCh      chan *ch9329MouseEvent
+	readWriteDeviceCh       chan []byte
+	readWriteDeviceResultCh chan error
 }
 
 type ch9329KeyEvent struct {
@@ -70,6 +72,8 @@ func NewCh9329(x, y int) *ch9329 {
 	dev.mouseKeyDownEventCh = make(chan *ch9329MouseEvent)
 	dev.mouseKeyUpEventCh = make(chan *ch9329MouseEvent)
 	dev.mouseScrollEventCh = make(chan *ch9329MouseEvent)
+	dev.readWriteDeviceCh = make(chan []byte)
+	dev.readWriteDeviceResultCh = make(chan error)
 	return dev
 }
 
@@ -87,6 +91,7 @@ func (c *ch9329) OpenDevice(args ...string) error {
 	log.PrintInfo("opened hid device %s", devicePath)
 	go c.keyDownKeyUp()
 	go c.mouseOperator()
+	go c.readWriteDevice()
 	return nil
 }
 
@@ -265,7 +270,8 @@ func (c *ch9329) keyDownKeyUp() {
 			continue
 		}
 
-		resultCh <- c.readWriteDevice(command)
+		c.readWriteDeviceCh <- command
+		resultCh <- <-c.readWriteDeviceResultCh
 	}
 }
 
@@ -301,35 +307,38 @@ func (c *ch9329) mouseOperator() {
 			}
 		}
 
-		resultCh <- c.readWriteDevice(command)
+		c.readWriteDeviceCh <- command
+		resultCh <- <-c.readWriteDeviceResultCh
 	}
 }
 
-func (c *ch9329) readWriteDevice(command []byte) error {
-	sum := byte(0)
-	sumIndex := len(command) - 1
-	command[sumIndex] = 0
-	for _, b := range command {
-		sum += b
+func (c *ch9329) readWriteDevice() {
+	for {
+		command := <-c.readWriteDeviceCh
+		sum := byte(0)
+		sumIndex := len(command) - 1
+		command[sumIndex] = 0
+		for _, b := range command {
+			sum += b
+		}
+
+		log.PrintDebug("sum = %v", sum)
+		command[sumIndex] = sum
+
+		log.PrintDebug("commond=%v", command)
+		n, err := c.device.Write(command)
+		if err != nil {
+			c.readWriteDeviceResultCh <- fmt.Errorf("write file error:n=%d, err=%v", n, err)
+		}
+
+		response := make([]byte, 100)
+		_, err = c.device.Read(response)
+		if err != nil || response[RESPONSESTATUSINDEX] != 0 {
+			c.readWriteDeviceResultCh <- fmt.Errorf("read file error: err=%v, status code = %x", err, response[RESPONSESTATUSINDEX])
+		}
+		log.PrintDebug("response=%v", response)
+		c.readWriteDeviceResultCh <- nil
 	}
-
-	log.PrintDebug("sum = %v", sum)
-	command[sumIndex] = sum
-
-	log.PrintDebug("commond=%v", command)
-	n, err := c.device.Write(command)
-	if err != nil {
-		return fmt.Errorf("write file error:n=%d, err=%v", n, err)
-	}
-
-	response := make([]byte, 100)
-	_, err = c.device.Read(response)
-	if err != nil || response[RESPONSESTATUSINDEX] != 0 {
-		return fmt.Errorf("read file error: err=%v, status code = %x", err, response[RESPONSESTATUSINDEX])
-	}
-	log.PrintDebug("response=%v", response)
-
-	return nil
 }
 
 func (c *ch9329) getDevicePoint(point, screenMax uint16) [2]byte {
