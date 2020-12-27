@@ -1,0 +1,18 @@
+<html>
+<script type="text/javascript" src="/static/keyevent.js"></script>
+<script type="text/javascript">
+    window.document.oncontextmenu = function () { event.returnValue = false; }//disable right mouse button event  
+</script>
+
+<body onkeydown="return onKeyDown(event)" onkeyup="return onKeyUp(event)">
+    <button onclick="shortcut([17,18,46])">ctrl+alt+del</button>
+    <button onclick="shortcut([91, 76])">Win+L</button>
+    <br>
+    <table border="1">
+        <tr>
+            <td>%s</td>
+        </tr>
+    </table>
+</body>
+
+</html>

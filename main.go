@@ -36,7 +36,7 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&hidDevice, "hid", "", "/dev/ttyUSB0", "The path of hid device")
 	rootCmd.PersistentFlags().StringVarP(&hidModel, "model", "", "ch9329", "The hid device model. supported: ch9329")
 	rootCmd.PersistentFlags().StringVarP(&frameFormat, "format", "f", "mjpeg", "The frame format. supported: mjpeg")
-	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 30, "The frame rate")
+	rootCmd.PersistentFlags().IntVarP(&frameRate, "rate", "r", 25, "The frame rate")
 	rootCmd.PersistentFlags().IntVarP(&width, "width", "", 1920, "screen width")
 	rootCmd.PersistentFlags().IntVarP(&height, "height", "", 1080, "screen height")
 	rootCmd.PersistentFlags().IntVarP(&logLevel, "log_level", "", log.LOG_LEVEL_INFO, "log level:\n0: DEBUG\n1: INFO")

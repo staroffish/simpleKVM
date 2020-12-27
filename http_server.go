@@ -14,6 +14,7 @@ import (
 	"github.com/staroffish/simpleKVM/capture"
 	"github.com/staroffish/simpleKVM/hid/common"
 	"github.com/staroffish/simpleKVM/log"
+	"github.com/staroffish/simpleKVM/static"
 	"github.com/staroffish/simpleKVM/streamer"
 )
 
@@ -32,7 +33,19 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 	htmlElement := httpStreamer.HtmlElement()
 	httpHandler := httpStreamer.Handler()
 
-	indexPage := fmt.Sprintf(httpTemplateFormat, htmlElement)
+	httpTemplateFormat, err := static.Asset("static/template.html")
+	if err != nil {
+		log.PrintInfo("load static/template.html error : %v", err)
+		return
+	}
+
+	eventJs, err := static.Asset("static/keyevent.js")
+	if err != nil {
+		log.PrintInfo("load keyevent.js error : %v", err)
+		return
+
+	}
+	indexPage := fmt.Sprintf(string(httpTemplateFormat), htmlElement)
 
 	httpServer.GET("/", func(ctx *gin.Context) {
 		ctx.Data(http.StatusOK, "text/html", []byte(indexPage))
@@ -158,7 +171,10 @@ func StartHttpServer(ctx context.Context, addr string, dev *capture.CaptureDevic
 		}
 		ctx.Data(http.StatusOK, "text/text", []byte("ok"))
 	})
-	httpServer.Static("/static", "static")
+
+	httpServer.GET("/static/keyevent.js", func(ctx *gin.Context) {
+		ctx.Data(http.StatusOK, "application/javascript", eventJs)
+	})
 
 	httpServer.Run(addr)
 }
@@ -206,20 +222,3 @@ func dumpPprof() string {
 
 	return nowStr
 }
-
-var httpTemplateFormat = `<html>
-<script type="text/javascript" src="/static/keyevent.js"></script>
-<script type="text/javascript">
-    window.document.oncontextmenu = function () { event.returnValue = false; }//disable right mouse button event  
-</script>
-
-<body onkeydown="return onKeyDown(event)" onkeyup="return onKeyUp(event)">
-    <button onclick="shortcut([17,18,46])">ctrl+alt+del</button>
-    <button onclick="shortcut([91, 76])">Win+L</button>
-	<br>
-	<table border="1">
-	<tr><td>%s</td></tr>	
-	</table>
-</body>
-
-</html>`
