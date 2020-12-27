@@ -327,6 +327,7 @@ func (c *ch9329) readWriteDevice(command []byte) error {
 	if err != nil || response[RESPONSESTATUSINDEX] != 0 {
 		return fmt.Errorf("read file error: err=%v, status code = %x", err, response[RESPONSESTATUSINDEX])
 	}
+	log.PrintDebug("response=%v", response)
 
 	return nil
 }
